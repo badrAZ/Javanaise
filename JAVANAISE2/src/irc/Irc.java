@@ -34,15 +34,20 @@ public class Irc {
 		
 		// look up the IRC object in the JVN server
 		// if not found, create it, and register it in the JVN server
+		System.out.println(" --------------------- Recherche de l'objet dans le registre ...");
 		JvnObject jo = js.jvnLookupObject("IRC");
-		
 		if (jo == null) {
-			System.out.println("Je suis pas enregistrée.");
+			System.out.println("--------------------- Création de l'objet ...");
 			jo = js.jvnCreateObject((Serializable) new Sentence());
+			
+			System.out.println("--------------------- Relacher les verrous");
 			// after creation, I have a write lock on the object
 			jo.jvnUnLock();
+			
+			System.out.println("--------------------- Enregistrement de l'objet dans le registre ...");
 			js.jvnRegisterObject("IRC", jo);
-		}else System.out.println("objet trouvé!");
+			System.out.println("Objet Enregistré");
+		}
 		// create the graphical part of the Chat application
 		 new Irc(jo);
 	   

@@ -12,6 +12,9 @@ import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.io.*;
 
 
@@ -23,6 +26,8 @@ public class JvnServerImpl
   // A JVN server is managed as a singleton 
 	private static JvnServerImpl js = null;
 	private JvnRemoteCoord jvnRemoteCoord = null;
+	
+	private HashMap<Integer,JvnObject> objP ;//enregistrer la liste d'objet posséder pour les recup
   /**
   * Default constructor
   * @throws JvnException
@@ -32,6 +37,8 @@ public class JvnServerImpl
 		// to be completed
         try{
         	jvnRemoteCoord= (JvnRemoteCoord) Naming.lookup("serveur_de_coordination");
+        	if(jvnRemoteCoord!=null) System.out.println("Serveur de coordination trouvé dans le registre RMI");
+        	objP=new HashMap<Integer,JvnObject>();
         }catch(NotBoundException e){
         	System.out.println("Erreur Serveur de coordination est null");
         }
@@ -70,14 +77,17 @@ public class JvnServerImpl
 	**/
 	public  JvnObject jvnCreateObject(Serializable o)
 	throws jvn.JvnException { 
-			int id=-1;
+			int id = -1;
 			try {
-				id = jvnRemoteCoord.jvnGetObjectId();
+				 id = jvnRemoteCoord.jvnGetObjectId();
 			} catch (RemoteException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			return new JvnObjectImpl(o,id);
+			JvnObjectImpl objImp =new JvnObjectImpl(o,id,ObjectState.W);
+			System.out.println("Object crée et locké en écriture");
+			objP.put(id, objImp);
+			return objImp;
 		
 	
 	}
@@ -109,7 +119,17 @@ public class JvnServerImpl
 	throws jvn.JvnException {
     // to be completed 
 		try {
-			return jvnRemoteCoord.jvnLookupObject(jon, this);
+			JvnObject obj=jvnRemoteCoord.jvnLookupObject(jon, this);
+			if(obj == null){
+				System.out.println("Objet non trouvé dans le registre"); 
+				return null;
+			}
+			else 
+			{
+				System.out.println("Objet trouvé dans le registre"); 
+				return obj;
+			}
+				
 		} catch (RemoteException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -126,7 +146,13 @@ public class JvnServerImpl
    public Serializable jvnLockRead(int joi)
 	 throws JvnException {
 		// to be completed 
-		return null;
+		try {
+			return jvnRemoteCoord.jvnLockRead(joi, this);
+		} catch (RemoteException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
 
 	}	
 	/**
@@ -175,7 +201,9 @@ public class JvnServerImpl
    public Serializable jvnInvalidateWriterForReader(int joi)
 	 throws java.rmi.RemoteException,jvn.JvnException { 
 		// to be completed 
-		return null;
+	   JvnObject objInv=objP.get(joi);
+	   
+		return objInv.jvnInvalidateWriterForReader();
 	 };
 
 }
