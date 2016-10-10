@@ -39,8 +39,7 @@ public class Irc {
 		if (jo == null) {
 			System.out.println("--------------------- Création de l'objet ...");
 			jo = js.jvnCreateObject((Serializable) new Sentence());
-			
-			System.out.println("--------------------- Relacher les verrous");
+		
 			// after creation, I have a write lock on the object
 			jo.jvnUnLock();
 			
@@ -77,8 +76,26 @@ public class Irc {
 		write_button.addActionListener(new writeListener(this));
 		frame.add(write_button);
 		frame.setSize(545,201);
+		frame.addWindowListener(new WindowAdapter()
+        {
+            @Override
+            public void windowClosing(WindowEvent e)
+            {
+                	try {
+						JvnServerImpl.jvnGetServer().jvnTerminate();
+						System.out.println("Serveur supprimé");
+					} catch (JvnException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+               
+                
+                e.getWindow().dispose();
+            }
+        });
 		text.setBackground(Color.black); 
 		frame.setVisible(true);
+	
 	}
 }
 

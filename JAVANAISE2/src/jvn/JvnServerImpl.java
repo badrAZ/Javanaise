@@ -68,6 +68,12 @@ public class JvnServerImpl
 	public  void jvnTerminate()
 	throws jvn.JvnException {
     // to be completed 
+		try {
+			jvnRemoteCoord.jvnTerminate(this);
+		} catch (RemoteException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	} 
 	
 	/**
@@ -119,7 +125,9 @@ public class JvnServerImpl
 	throws jvn.JvnException {
     // to be completed 
 		try {
+			
 			JvnObject obj=jvnRemoteCoord.jvnLookupObject(jon, this);
+			
 			if(obj == null){
 				System.out.println("Objet non trouvé dans le registre"); 
 				return null;
@@ -127,7 +135,9 @@ public class JvnServerImpl
 			else 
 			{
 				System.out.println("Objet trouvé dans le registre"); 
-				return obj;
+				JvnObject objN= new JvnObjectImpl(obj.jvnGetObjectState(), obj.jvnGetObjectId(), ObjectState.NL);
+				objP.put(obj.jvnGetObjectId(), objN);
+				return objN;
 			}
 				
 		} catch (RemoteException e) {
@@ -164,7 +174,13 @@ public class JvnServerImpl
    public Serializable jvnLockWrite(int joi)
 	 throws JvnException {
 		// to be completed 
-		return null;
+	   try {
+			return jvnRemoteCoord.jvnLockWrite(joi, this);
+		} catch (RemoteException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
 	}	
 
 	
@@ -178,6 +194,8 @@ public class JvnServerImpl
   public void jvnInvalidateReader(int joi)
 	throws java.rmi.RemoteException,jvn.JvnException {
 		// to be completed 
+	  JvnObject objInv=objP.get(joi);
+	  objInv.jvnInvalidateReader();
 	};
 	    
 	/**
@@ -189,7 +207,8 @@ public class JvnServerImpl
   public Serializable jvnInvalidateWriter(int joi)
 	throws java.rmi.RemoteException,jvn.JvnException { 
 		// to be completed 
-		return null;
+	  JvnObject objInv=objP.get(joi);
+		return objInv.jvnInvalidateWriter();
 	};
 	
 	/**

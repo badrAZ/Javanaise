@@ -11,6 +11,7 @@ import java.rmi.Naming;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.io.IOException;
 import java.io.Serializable;
@@ -95,14 +96,16 @@ public static void main(String argv[]) throws Exception {
   throws java.rmi.RemoteException,jvn.JvnException{
     // to be completed 
 	  synchronized (this) {
+		  
 		  // Récupération des serveurs qui ont un verrou sur l'objet
 		  JvnObject obj = nameMap.get(jon);
-		 JvnServersLockObject serversLO = objectServersLock.get(obj.jvnGetObjectId());
-		 if(serversLO!=null)
-		 {
-			// changer l'état de l'objet en NL
-			 serversLO.setEtatObject(ObjectState.NL);
-		 }
+		  if(obj != null){
+			  Integer idO = obj.jvnGetObjectId();
+			  JvnServersLockObject serversLO = objectServersLock.get(idO);
+		  }
+		
+		 
+		
 			   return nameMap.get(jon);
 		}
   }
@@ -117,19 +120,19 @@ public static void main(String argv[]) throws Exception {
    public Serializable jvnLockRead(int joi, JvnRemoteServer js)
    throws java.rmi.RemoteException, JvnException{
 	   synchronized (this) {
-		   JvnServersLockObject serversLO = objectServersLock.get(joi);
-		   Serializable etatO=null;
 		   
-		   if(serversLO.getEtatObject()== ObjectState.NL){
-			   serversLO.getJss().clear();
-			   serversLO.setEtatObject(ObjectState.R);
-			   serversLO.addJs(js);
+		   JvnServersLockObject serversLO = objectServersLock.get(joi);
+		   Serializable etatO=serversLO.getEtatObject();
+		 
+		  if(serversLO.getEtatObject()== ObjectState.NL){
+				   serversLO.getJss().clear();//vider en cas ou de NL
+			  
 		   }
 		   
-		   // Il y a pas de problemme de concurrence d'accès quand le verrou est en read
+		   /*// Il y a pas de problemme de concurrence d'accès quand le verrou est en read
 		   if(serversLO.getEtatObject() == ObjectState.R){
 			   serversLO.addJs(js);
-		   }
+		   }*/
 		   
 		   if(serversLO.getEtatObject() == ObjectState.W){
 			   // il y a qu' un seul serveur qui a le verrou en right
@@ -139,13 +142,16 @@ public static void main(String argv[]) throws Exception {
 			   if(!serv.equals(js))
 			   // le server qui a le verrou en écriture son verrou va changer en lecture (cache)
 			   etatO=serv.jvnInvalidateWriterForReader(joi);
-			   
-			   // l'etat de verrou qui ont les serveur vont changer en read
-			   serversLO.setEtatObject(ObjectState.R);
-			   
-			   // ajout du serveur dans la liste des serv qui ont le verrou en lecture sur l'objet
-			   serversLO.addJs(serv);
 		   }
+		   
+	
+		   
+		// l'etat de verrou qui ont les serveur vont changer en read
+		   serversLO.setEtatObject(ObjectState.R);
+		   
+		   // ajout du serveur dans la liste des serv qui ont le verrou en lecture sur l'objet
+		   serversLO.addJs(js);
+		   
 		   return etatO;
 	   
 	   }
@@ -162,8 +168,34 @@ public static void main(String argv[]) throws Exception {
   **/
    public Serializable jvnLockWrite(int joi, JvnRemoteServer js)
    throws java.rmi.RemoteException, JvnException{
+	   JvnServersLockObject serversLO = objectServersLock.get(joi);
+	   Serializable etatO=serversLO.getEtatObject();
+	   
+	   if(serversLO.getEtatObject()== ObjectState.NL){
+		   serversLO.getJss().clear();
+	   }
+	   if(serversLO.getEtatObject() == ObjectState.R)
+	   {
+		   Iterator<JvnRemoteServer> servs = serversLO.getJss().iterator();
+		   while(servs.hasNext()){
+			   JvnRemoteServer sv=servs.next();
+			   
+			   if(!sv.equals(js))
+			   {
+				   sv.jvnInvalidateReader(joi);  
+			   }
+			  
+		   }
+	   }
+	   if(serversLO.getEtatObject() == ObjectState.W){
+		   JvnRemoteServer serv=serversLO.getJss().iterator().next();
+		   etatO= serv.jvnInvalidateWriter(joi);
+	   }
+	   serversLO.getJss().clear();
+	   serversLO.addJs(js);
+	   serversLO.setEtatObject(ObjectState.W);
     // to be completed
-    return null;
+    return etatO;
    }
 
 	/**
@@ -173,7 +205,12 @@ public static void main(String argv[]) throws Exception {
 	**/
     public void jvnTerminate(JvnRemoteServer js)
 	 throws java.rmi.RemoteException, JvnException {
-	 // to be completed
+    	for(Integer i :objectServersLock.keySet() ){
+    		Iterator<JvnRemoteServer> servs=objectServersLock.get(i).getJss().iterator();
+    		if(servs.hasNext()){
+    			if(servs.next().equals(js)) servs.remove();
+    		}
+    	}
     }
 }
 
