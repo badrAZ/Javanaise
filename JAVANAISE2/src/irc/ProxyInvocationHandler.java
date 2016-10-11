@@ -14,7 +14,7 @@ import jvn.JvnServerImpl;
 public class ProxyInvocationHandler implements InvocationHandler {
 	
 	
-	private JvnObject obj;
+	private JvnObject jo;
 
 	public ProxyInvocationHandler() {
 		try {
@@ -24,7 +24,7 @@ public class ProxyInvocationHandler implements InvocationHandler {
 		// look up the IRC object in the JVN server
 		// if not found, create it, and register it in the JVN server
 		System.out.println(" --------------------- Recherche de l'objet dans le registre ...");
-		JvnObject jo = js.jvnLookupObject("IRC");
+		jo= js.jvnLookupObject("IRC");
 		
 		if (jo == null) {
 			System.out.println("--------------------- Création de l'objet ...");
@@ -42,7 +42,7 @@ public class ProxyInvocationHandler implements InvocationHandler {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		this.obj=obj;
+		
 	}
 
 
@@ -68,16 +68,15 @@ public class ProxyInvocationHandler implements InvocationHandler {
             System.out.println("Avant la méthode " );
 
     		String nomMethode=m.getName();
-    		System.out.println(nomMethode);
-    		if(nomMethode.lastIndexOf("Read")==-1){
-    			obj.jvnLockRead();
-    			
+    		if(nomMethode.lastIndexOf("read")!=-1){
+    			jo.jvnLockRead();
     		}
-    		if(nomMethode.lastIndexOf("Write")==-1){
-    			obj.jvnLockWrite();
+    		if(nomMethode.lastIndexOf("write")!=-1){
+    			jo.jvnLockWrite();
     		}
-            result = m.invoke(obj.jvnGetObjectState(), args);
-            obj.jvnUnLock();
+    		
+            result = m.invoke(jo.jvnGetObjectState(), args);
+            jo.jvnUnLock();
         } catch (InvocationTargetException e) {
             throw e.getTargetException();
         } catch (Exception e) {
