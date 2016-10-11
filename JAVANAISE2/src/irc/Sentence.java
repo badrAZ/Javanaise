@@ -8,7 +8,7 @@
 
 package irc;
 
-public class Sentence implements java.io.Serializable {
+public class Sentence implements java.io.Serializable,SentenceInterface {
 	String 		data;
   
 	public Sentence() {

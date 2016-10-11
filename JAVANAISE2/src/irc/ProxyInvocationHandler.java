@@ -1,5 +1,6 @@
 package irc;
 
+import java.io.Serializable;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -15,48 +16,75 @@ public class ProxyInvocationHandler implements InvocationHandler {
 	
 	private JvnObject obj;
 
-	public ProxyInvocationHandler(JvnObject obj) {
+	public ProxyInvocationHandler() {
+		try {
+		// initialize JVN
+		JvnServerImpl js = JvnServerImpl.jvnGetServer();
 	
+		// look up the IRC object in the JVN server
+		// if not found, create it, and register it in the JVN server
+		System.out.println(" --------------------- Recherche de l'objet dans le registre ...");
+		JvnObject jo = js.jvnLookupObject("IRC");
+		
+		if (jo == null) {
+			System.out.println("--------------------- Création de l'objet ...");
+			jo = js.jvnCreateObject((Serializable) new Sentence());
+		
+			// after creation, I have a write lock on the object
+			jo.jvnUnLock();
+			
+			System.out.println("--------------------- Enregistrement de l'objet dans le registre ...");
+			js.jvnRegisterObject("IRC", jo);
+			System.out.println("Objet Enregistré");
+		}
+		
+		} catch (JvnException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		this.obj=obj;
 	}
 
-	
+
 	//Intercepteur DynamicProxy
-	public static Object newInstProxy(JvnObject obj) throws JvnException{
-			
-		InvocationHandler proxyInvHandler = new ProxyInvocationHandler(obj);
-		
+	public static Object newInstProxy(Sentence obj) throws JvnException{
+
 		//Méthode static pour créer le dynamic proxy
 		return  java.lang.reflect.Proxy.newProxyInstance(
 				obj.getClass().getClassLoader(), // Obtenir la classe de l'objet 
 				obj.getClass().getInterfaces(),    // Array d'interfaces à implementer, pas de Classes sinon error
-				proxyInvHandler); // Handler ajouté
+				new ProxyInvocationHandler()); // Handler ajouté
 		
 	}
 	
 	// Define une clase Invocation Handler pour une interface spéficique
 	// permet de realiser les invocations
 	public Object invoke(Object proxy, Method m, Object[] args) throws Throwable {
-		
-		
-		
-		
-		m.getName();
 	
-		
 		//return proxy;
 		// un example d'implementation
-        Object result;
+        Object result = null;
         try {
-            System.out.println("Avant la méthode " + m.getName());
-            result = m.invoke(obj, args);
+            System.out.println("Avant la méthode " );
+
+    		String nomMethode=m.getName();
+    		System.out.println(nomMethode);
+    		if(nomMethode.lastIndexOf("Read")==-1){
+    			obj.jvnLockRead();
+    			
+    		}
+    		if(nomMethode.lastIndexOf("Write")==-1){
+    			obj.jvnLockWrite();
+    		}
+            result = m.invoke(obj.jvnGetObjectState(), args);
+            obj.jvnUnLock();
         } catch (InvocationTargetException e) {
             throw e.getTargetException();
         } catch (Exception e) {
-            throw new RuntimeException("unexpected invocation exception: " +
-                                       e.getMessage());
+           
         } finally {
-            System.out.println("Après la méthode " + m.getName());
+            System.out.println("Après la méthode " );
+
         }
         return result;
 	}
